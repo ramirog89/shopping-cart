@@ -10,12 +10,12 @@ interface SpecialPrice {
 }
 
 interface Shopping {
-  cart: CartItem[];
   add: (item: CartItem, quantity: number) => void;
   remove: (item: CartItem, quantity: number) => void;
   calculate: (bag: any) => number;
   calculateSubTotal: () => number;
   calculateTotalWithTax: () => number;
+  getCart: () => CartItem[];
 }
 
 const createItem = (name: string, price: number): CartItem => ({
@@ -29,8 +29,54 @@ const bread = createItem('Bread', 3.99);
 const cheerios = createItem('Cheerios', 5.49);
 const dillPickles = createItem('Dill Pickles', 4.99);
 
-// Define special prices for any cart item
-const specialPriceMap: { [key: string]: SpecialPrice } = {
+const shoppingCart: Shopping = (function(priceMap = {}) {
+  let cart: CartItem[] = [];
+  const specialPriceMap: { [key: string]: SpecialPrice } = priceMap;
+
+  function getCart(): CartItem[] {
+    return cart;
+  };
+
+  function add(item: CartItem, quantity: number) {
+    [...Array(quantity).keys()].forEach(() => cart.push({ ...item, specialPrice: specialPriceMap[item.name]?.name || null }));
+  };
+  
+  function remove(item: CartItem, quantity: number) {
+    const lastItemBeforeDelete = cart.filter(shopItem => shopItem.name === item.name).length;
+    cart = cart.filter(shopItem => shopItem.name !== item.name);
+    shoppingCart.add(item, lastItemBeforeDelete - quantity);
+  };
+
+  function calculate(bag): number {
+    return bag.reduce((total, item) => total += item.price, 0);
+  };
+  
+  function calculateSubTotal(): number {
+    return shoppingCart.calculate(cart);
+  };
+
+  function calculateTotalWithTax(): number {
+    const itemSpecialPriceList = Object.keys(specialPriceMap);
+    const itemsWithOutSpecialPrices = cart.filter(shopItem => {
+      return !itemSpecialPriceList.includes(shopItem.name)
+    });
+    const total = Object.entries(specialPriceMap).reduce((total, [key, item]) => {
+      const allItems = cart.filter(cartItem => cartItem.name === key);
+      return total += item.calculate(allItems, shoppingCart, allItems[0]);
+    }, 0);
+    return total + shoppingCart.calculate(itemsWithOutSpecialPrices);
+  };
+
+  return {
+    add,
+    remove,
+    calculate,
+    calculateSubTotal,
+    calculateTotalWithTax,
+    getCart
+  };
+})({
+  // Define special prices for any cart item
   [avocado.name]: { name: '3 for $5', calculate: (items) => {
       const withFive = Math.floor(items.length / 3);
       const totalWithFive = withFive * 5;
@@ -46,35 +92,6 @@ const specialPriceMap: { [key: string]: SpecialPrice } = {
   [dillPickles.name]: { name: '30% off', calculate: (items, shopping, item) => {
     return item.price * items.length * 0.30;
   }},
-};
-
-const shoppingCart: Shopping = ({
-  cart: [],
-  add: (item: CartItem, quantity: number) => {
-    [...Array(quantity).keys()].forEach(() => shoppingCart.cart.push({ ...item, specialPrice: specialPriceMap[item.name]?.name || null }));
-  },
-  remove: (item: CartItem, quantity: number) => {
-    const lastItemBeforeDelete = shoppingCart.cart.filter(shopItem => shopItem.name === item.name).length;
-    shoppingCart.cart = shoppingCart.cart.filter(shopItem => shopItem.name !== item.name);
-    shoppingCart.add(item, lastItemBeforeDelete - quantity);
-  },
-  calculate: (bag): number => {
-    return bag.reduce((total, item) => total += item.price, 0);
-  },
-  calculateSubTotal: (): number => {
-    return shoppingCart.calculate(shoppingCart.cart);
-  },
-  calculateTotalWithTax: (): number => {
-    const itemSpecialPriceList = Object.keys(specialPriceMap);
-    const itemsWithOutSpecialPrices = shoppingCart.cart.filter(shopItem => {
-      return !itemSpecialPriceList.includes(shopItem.name)
-    });
-    const total = Object.entries(specialPriceMap).reduce((total, [key, item]) => {
-      const allItems = shoppingCart.cart.filter(cartItem => cartItem.name === key);
-      return total += item.calculate(allItems, shoppingCart, allItems[0]);
-    }, 0);
-    return total + shoppingCart.calculate(itemsWithOutSpecialPrices);
-  }
 });
 
 // Populate the Shop
@@ -90,4 +107,4 @@ shoppingCart.add(dillPickles, 2);
 console.info('Shopping Subtotal: ', shoppingCart.calculateSubTotal());
 console.info('Shopping Total with Taxes: ', shoppingCart.calculateTotalWithTax());
 
-console.table(shoppingCart.cart);
+console.table(shoppingCart.getCart());
