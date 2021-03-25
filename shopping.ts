@@ -1,6 +1,7 @@
 interface CartItem {
   name: string;
   price: number;
+  specialPrice?: string;
 }
 
 interface SpecialPrice {
@@ -50,7 +51,7 @@ const specialPriceMap: { [key: string]: SpecialPrice } = {
 const shoppingCart: Shopping = ({
   cart: [],
   add: (item: CartItem, quantity: number) => {
-    [...Array(quantity).keys()].forEach(() => shoppingCart.cart.push(item));
+    [...Array(quantity).keys()].forEach(() => shoppingCart.cart.push({ ...item, specialPrice: specialPriceMap[item.name]?.name || null }));
   },
   remove: (item: CartItem, quantity: number) => {
     const lastItemBeforeDelete = shoppingCart.cart.filter(shopItem => shopItem.name === item.name).length;

@@ -28,7 +28,7 @@ const specialPriceMap = {
 const shoppingCart = ({
     cart: [],
     add: (item, quantity) => {
-        [...Array(quantity).keys()].forEach(() => shoppingCart.cart.push(item));
+        [...Array(quantity).keys()].forEach(() => { var _a; return shoppingCart.cart.push(Object.assign(Object.assign({}, item), { specialPrice: ((_a = specialPriceMap[item.name]) === null || _a === void 0 ? void 0 : _a.name) || null })); });
     },
     remove: (item, quantity) => {
         const lastItemBeforeDelete = shoppingCart.cart.filter(shopItem => shopItem.name === item.name).length;
